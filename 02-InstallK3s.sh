@@ -4,13 +4,13 @@ curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="server --disable traefik" sh -s
 
 # 6. Configure kubeconfig
 echo "Setting up kubeconfig..."
-mkdir -p $HOME/.kube # Use $HOME
-sudo cp /etc/rancher/k3s/k3s.yaml $HOME/.kube/config # Use $HOME
+mkdir -p $HOME/.kube
+sudo cp /etc/rancher/k3s/k3s.yaml $HOME/.kube/config
 sudo chmod 666 /etc/rancher/k3s/k3s.yaml
 sudo chown 400 $HOME/.kube/config
-sed -i 's/127.0.0.1/kubernetes.default.svc.cluster.local/' $HOME/.kube/config # Use $HOME
-sudo chown -R $USER:$USER $HOME/.kube # Use $HOME and $USER
-sudo chmod 600 $HOME/.kube/config # Use $HOME
+sed -i 's/127.0.0.1/kubernetes.default.svc.cluster.local/' $HOME/.kube/config
+sudo chown -R $USER:$USER $HOME/.kube
+sudo chmod 600 $HOME/.kube/config
 
 # 7. Install Helm
 echo "Installing Helm..."
@@ -22,11 +22,45 @@ helm repo add traefik https://helm.traefik.io/traefik
 helm repo update
 helm install traefik traefik/traefik -n kube-system
 
+# Wait for Traefik to be ready
+echo "Waiting for Traefik to be ready..."
+elapsed_time=0
+while ! kubectl get pods -n kube-system | grep traefik | grep Running > /dev/null; do
+  sleep 1
+  elapsed_time=$((elapsed_time + 1))
+  printf "\rTraefik initializing... %ds elapsed" "$elapsed_time"  # \r for same-line update
+done
+echo ""  # Add a newline after the loop
+echo "Traefik is ready."
+
 # 9. Install Argo CD
 echo "Installing Argo CD..."
-export KUBECONFIG=$HOME/.kube/config # Use $HOME
+export KUBECONFIG=$HOME/.kube/config
 kubectl create namespace argocd
 kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 
-echo -e "\n\e[32mInstallation complete!\e[0m"
-echo "Argo CD admin password: $(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d)"
+# Wait for Argo CD to be ready
+echo "Waiting for Argo CD to be ready..."
+elapsed_time=0
+
+while ! kubectl get pods -n argocd | grep argocd-server | grep Running > /dev/null; do
+  sleep 1
+  elapsed_time=$((elapsed_time + 1))
+  printf "\rArgo CD pod initializing... %ds elapsed" "$elapsed_time"
+done
+
+while ! kubectl get service argocd-server -n argocd > /dev/null 2>&1; do
+  sleep 1
+  elapsed_time=$((elapsed_time + 1))
+  printf "\rArgo CD service not yet available... %ds elapsed" "$elapsed_time"
+done
+
+while ! curl --fail --insecure https://$(kubectl get service argocd-server -n argocd -o jsonpath='{.status.loadBalancer.ingress[0].hostname}') 2>/dev/null; do
+    sleep 1
+    elapsed_time=$((elapsed_time + 1))
+    printf "\rArgo CD server not yet responding... %ds elapsed" "$elapsed_time"
+done
+
+
+echo "" # Add a newline after the loop
+echo "Argo CD is ready."
