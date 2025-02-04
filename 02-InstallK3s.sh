@@ -6,7 +6,7 @@ curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="server --disable traefik" sh -s
 echo "Setting up kubeconfig..."
 mkdir -p $HOME/.kube # Use $HOME
 cp /etc/rancher/k3s/k3s.yaml $HOME/.kube/config # Use $HOME
-chmod 666 /etc/rancher/k3s/k3s.yaml
+sudo chmod 666 /etc/rancher/k3s/k3s.yaml
 chown 400 $HOME/.kube/config
 sed -i 's/127.0.0.1/kubernetes.default.svc.cluster.local/' $HOME/.kube/config # Use $HOME
 chown -R $USER:$USER $HOME/.kube # Use $HOME and $USER
