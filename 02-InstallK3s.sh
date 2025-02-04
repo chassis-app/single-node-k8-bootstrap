@@ -7,7 +7,7 @@ ARGOCD_VERSION="v7.7.23" # Example version
 
 # 1. Install K3s without Traefik
 echo "Installing K3s ${K3S_VERSION} cluster..."
-curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="${K3S_VERSION}" INSTALL_K3S_EXEC="server --disable traefik" sh -s -
+curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="${K3S_VERSION}" INSTALL_K3S_EXEC="server --disable traefik --write-kubeconfig-mode 644" sh -s -
 
 # 2. Configure kubeconfig
 echo "Setting up kubeconfig..."
