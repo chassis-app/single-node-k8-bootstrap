@@ -39,8 +39,8 @@ global:
       kubernetes.io/ingress.class: traefik # Ensure this matches your IngressClass
     hosts:
       - host: ${TRAEFIK_SUBDOMAIN}
-        # tls: # Uncomment to enable TLS (highly recommended for production)
-        #   secretName: traefik-cert # Create a TLS certificate secret
+          tls: # Uncomment to enable TLS (highly recommended for production)
+            secretName: traefik-cert # Create a TLS certificate secret
 
 ports:
   web:
