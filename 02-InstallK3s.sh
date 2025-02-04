@@ -2,7 +2,7 @@
 
 # Set variables for better readability and maintainability
 K3S_VERSION="v1.31.5+k3s1" # Example version.  Pin to a specific version for production.
-TRAEFIK_VERSION="v3.3.2" # Example version
+TRAEFIK_VERSION="v34.2" # Example version
 ARGOCD_VERSION="v2.14.1" # Example version
 
 # 1. Install K3s without Traefik
