@@ -37,7 +37,13 @@ echo "Traefik is ready."
 echo "Installing Argo CD..."
 export KUBECONFIG=$HOME/.kube/config
 kubectl create namespace argocd
-kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+
+# Patch the manifest to set insecure to true
+manifest_url="https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml"
+patched_manifest=$(curl -s "$manifest_url" | sed 's/value: "false"/value: "true"/g' | sed 's/name: insecure/name: argocd-server.insecure/g')
+
+# Apply the patched manifest
+echo "$patched_manifest" | kubectl apply -n argocd -f -
 
 # Wait for Argo CD to be ready
 echo "Waiting for Argo CD to be ready..."
