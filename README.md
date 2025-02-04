@@ -9,3 +9,10 @@ curl -sSL https://raw.githubusercontent.com/chassis-app/single-node-k8-bootstrap
 chmod +x 01-UbuntuInit.sh
 bash 01-UbuntuInit.sh
 ```
+
+
+# Install K3s with Traefik and ArgoCD
+
+```
+curl -s https://raw.githubusercontent.com/chassis-app/single-node-k8-bootstrap/refs/heads/main/02-InstallK3s.sh | sudo bash
+```
