@@ -2,8 +2,8 @@
 
 # Set variables
 K3S_VERSION="v1.31.5+k3s1" # Example version - pin for production
-TRAEFIK_VERSION="v34.2" # Example version - pin for production
-ARGOCD_VERSION="v7.7.23" # Example version - pin for production
+TRAEFIK_VERSION="v2.10.5" # Example version - pin for production. v3 is a major change and may require different configurations.
+ARGOCD_VERSION="v2.7.23" # Example version - pin for production.  v7 is a major change and may require different configurations.
 
 # Ask the user for the domain
 read -p "Enter the base domain (e.g., app.com): " BASE_DOMAIN
@@ -36,11 +36,11 @@ global:
   ingress:
     enabled: true
     annotations:
-      kubernetes.io/ingress.class: traefik # Ensure this matches your IngressClass
+      kubernetes.io/ingress.class: traefik # Ensure this matches your IngressClass (can be traefik-external if needed)
     hosts:
       - host: ${TRAEFIK_SUBDOMAIN}
-          tls: # Uncomment to enable TLS (highly recommended for production)
-            secretName: traefik-cert # Create a TLS certificate secret
+        tls: # Uncomment to enable TLS (highly recommended for production)
+          secretName: traefik-cert # Create a TLS certificate secret
 
 ports:
   web:
@@ -80,7 +80,7 @@ while [[ $retry_count -lt $max_retries ]]; do
 done
 
 if [[ $retry_count -eq $max_retries ]]; then
-  echo "Traefik deployment timed out. Check logs for errors."
+  echo "Traefik deployment timed out. Check logs for errors: kubectl logs -n kube-system deployment/traefik"
   exit 1
 fi
 
@@ -92,7 +92,7 @@ echo "Installing Argo CD ${ARGOCD_VERSION}..."
 kubectl create namespace argocd
 
 # Patch the manifest to set insecure to true (NOT RECOMMENDED FOR PRODUCTION)
-manifest_url="https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml"
+manifest_url="https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml" # Use the stable manifest URL
 patched_manifest=$(curl -s "$manifest_url" | sed 's/value: "false"/value: "true"/g' | sed 's/name: insecure/name: argocd-server.insecure/g')
 
 # Apply the patched manifest
@@ -114,7 +114,7 @@ while [[ $retry_count -lt $max_retries ]]; do
 done
 
 if [[ $retry_count -eq $max_retries ]]; then
-  echo "Argo CD deployment timed out. Check logs for errors."
+  echo "Argo CD deployment timed out. Check logs for errors: kubectl logs -n argocd deployment/argocd-server"
   exit 1
 fi
 
@@ -123,3 +123,6 @@ echo "Traefik dashboard should be accessible at: http://${TRAEFIK_SUBDOMAIN}:${T
 echo "Remember to configure your DNS records to point ${TRAEFIK_SUBDOMAIN} to your K3s server's public IP."
 echo "Also, you'll need to configure your node's firewall to forward port ${TRAEFIK_NODEPORT} to your K3s server."
 echo "Argo CD is installed in the argocd namespace."
+echo "To access Argo CD, you'll need to port-forward the argocd-server service:"
+echo "kubectl port-forward -n argocd service/argocd-server 8080:8080"
+echo "Then, you can access it at http://localhost:8080"
