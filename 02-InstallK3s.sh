@@ -1,72 +1,88 @@
-# 5. Install K3s without Traefik
-echo "Installing K3s cluster..."
-curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="server --disable traefik" sh -s -
+#!/bin/bash
 
-# 6. Configure kubeconfig
+# Set variables for better readability and maintainability
+K3S_VERSION="v1.31.5+k3s1" # Example version.  Pin to a specific version for production.
+TRAEFIK_VERSION="v3.3.2" # Example version
+ARGOCD_VERSION="v2.14.1" # Example version
+
+# 1. Install K3s without Traefik
+echo "Installing K3s ${K3S_VERSION} cluster..."
+curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="${K3S_VERSION}" INSTALL_K3S_EXEC="server --disable traefik" sh -s -
+
+# 2. Configure kubeconfig
 echo "Setting up kubeconfig..."
-mkdir -p $HOME/.kube
-sudo cp /etc/rancher/k3s/k3s.yaml $HOME/.kube/config
-sudo chmod 666 /etc/rancher/k3s/k3s.yaml
-sudo chown 400 $HOME/.kube/config
-sed -i 's/127.0.0.1/kubernetes.default.svc.cluster.local/' $HOME/.kube/config
-sudo chown -R $USER:$USER $HOME/.kube
-sudo chmod 600 $HOME/.kube/config
+mkdir -p "$HOME/.kube"
+sudo cp /etc/rancher/k3s/k3s.yaml "$HOME/.kube/config"
+sudo chown "$USER:$USER" "$HOME/.kube/config"
+chmod 600 "$HOME/.kube/config"
+# Use `kubectl config set-context` for better context management
+kubectl config set-context --current --kubeconfig "$HOME/.kube/config" --server="https://$(kubectl config view --kubeconfig "$HOME/.kube/config" -o jsonpath='{.clusters[0].cluster.server}')"
+export KUBECONFIG="$HOME/.kube/config"
 
-# 7. Install Helm
+# 3. Install Helm
 echo "Installing Helm..."
 curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
-# 8. Install Traefik using Helm
-echo "Installing Traefik using Helm..."
+# 4. Install Traefik using Helm
+echo "Installing Traefik ${TRAEFIK_VERSION} using Helm..."
 helm repo add traefik https://helm.traefik.io/traefik
 helm repo update
-helm install traefik traefik/traefik -n kube-system
+helm install traefik traefik/traefik -n kube-system --version "${TRAEFIK_VERSION}"
 
-# Wait for Traefik to be ready
+# 5. Wait for Traefik to be ready with retry logic
 echo "Waiting for Traefik to be ready..."
-elapsed_time=0
-while ! kubectl get pods -n kube-system | grep traefik | grep Running > /dev/null; do
-  sleep 1
-  elapsed_time=$((elapsed_time + 1))
-  printf "\rTraefik initializing... %ds elapsed" "$elapsed_time"  # \r for same-line update
+max_retries=20
+retry_count=0
+while [[ $retry_count -lt $max_retries ]]; do
+  if kubectl rollout status deployment/traefik -n kube-system --watch --timeout=10s; then
+    echo "Traefik is ready."
+    break
+  else
+    echo "Traefik not yet ready, retrying in 5 seconds..."
+    sleep 5
+    retry_count=$((retry_count + 1))
+  fi
 done
-echo ""  # Add a newline after the loop
-echo "Traefik is ready."
 
-# 9. Install Argo CD
-echo "Installing Argo CD..."
-export KUBECONFIG=$HOME/.kube/config
+if [[ $retry_count -eq $max_retries ]]; then
+  echo "Traefik deployment timed out. Check logs for errors."
+  exit 1
+fi
+
+# 6. Install Argo CD
+echo "Installing Argo CD ${ARGOCD_VERSION}..."
 kubectl create namespace argocd
 
-# Patch the manifest to set insecure to true
+# Patch the manifest to set insecure to true (for demonstration purposes only - NOT RECOMMENDED FOR PRODUCTION)
 manifest_url="https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml"
 patched_manifest=$(curl -s "$manifest_url" | sed 's/value: "false"/value: "true"/g' | sed 's/name: insecure/name: argocd-server.insecure/g')
 
 # Apply the patched manifest
 echo "$patched_manifest" | kubectl apply -n argocd -f -
 
-# Wait for Argo CD to be ready
+# 7. Wait for Argo CD to be ready with retry logic
 echo "Waiting for Argo CD to be ready..."
-elapsed_time=0
 
-while ! kubectl get pods -n argocd | grep argocd-server | grep Running > /dev/null; do
-  sleep 1
-  elapsed_time=$((elapsed_time + 1))
-  printf "\rArgo CD pod initializing... %ds elapsed" "$elapsed_time"
-done
+max_retries=20
+retry_count=0
 
-while ! kubectl get service argocd-server -n argocd > /dev/null 2>&1; do
-  sleep 1
-  elapsed_time=$((elapsed_time + 1))
-  printf "\rArgo CD service not yet available... %ds elapsed" "$elapsed_time"
-done
-
-while ! curl --fail --insecure https://$(kubectl get service argocd-server -n argocd -o jsonpath='{.status.loadBalancer.ingress[0].hostname}') 2>/dev/null; do
-    sleep 1
-    elapsed_time=$((elapsed_time + 1))
-    printf "\rArgo CD server not yet responding... %ds elapsed" "$elapsed_time"
+while [[ $retry_count -lt $max_retries ]]; do
+    if kubectl rollout status deployment/argocd-server -n argocd --watch --timeout=10s; then
+        echo "Argo CD is ready."
+        break
+    else
+        echo "Argo CD not yet ready, retrying in 5 seconds..."
+        sleep 5
+        retry_count=$((retry_count + 1))
+    fi
 done
 
 
-echo "" # Add a newline after the loop
-echo "Argo CD is ready."
+if [[ $retry_count -eq $max_retries ]]; then
+  echo "Argo CD deployment timed out. Check logs for errors."
+  exit 1
+fi
+
+
+# Important: For production, remove the insecure setting and configure TLS.
+echo "Argo CD is ready. Remember to remove the insecure setting for production and configure TLS."
