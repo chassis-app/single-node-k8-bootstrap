@@ -2,8 +2,8 @@
 
 # Set variables
 K3S_VERSION="v1.31.5+k3s1" # Example version - pin for production
-TRAEFIK_VERSION="v2.10.5" # Example version - pin for production. v3 is a major change and may require different configurations.
-ARGOCD_VERSION="v2.7.23" # Example version - pin for production.  v7 is a major change and may require different configurations.
+TRAEFIK_VERSION="v34.2" # Example version - pin for production. v3 is a major change and may require different configurations.
+ARGOCD_VERSION="v7.7.23" # Example version - pin for production.  v7 is a major change and may require different configurations.
 
 # Ask the user for the domain
 read -p "Enter the base domain (e.g., app.com): " BASE_DOMAIN
