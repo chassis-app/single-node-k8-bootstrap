@@ -5,12 +5,12 @@ curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="server --disable traefik" sh -s
 # 6. Configure kubeconfig
 echo "Setting up kubeconfig..."
 mkdir -p $HOME/.kube # Use $HOME
-cp /etc/rancher/k3s/k3s.yaml $HOME/.kube/config # Use $HOME
+sudo cp /etc/rancher/k3s/k3s.yaml $HOME/.kube/config # Use $HOME
 sudo chmod 666 /etc/rancher/k3s/k3s.yaml
-chown 400 $HOME/.kube/config
+sudo chown 400 $HOME/.kube/config
 sed -i 's/127.0.0.1/kubernetes.default.svc.cluster.local/' $HOME/.kube/config # Use $HOME
-chown -R $USER:$USER $HOME/.kube # Use $HOME and $USER
-chmod 600 $HOME/.kube/config # Use $HOME
+sudo chown -R $USER:$USER $HOME/.kube # Use $HOME and $USER
+sudo chmod 600 $HOME/.kube/config # Use $HOME
 
 # 7. Install Helm
 echo "Installing Helm..."
