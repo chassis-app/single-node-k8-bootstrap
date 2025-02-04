@@ -15,10 +15,12 @@ fi
 
 # 3. Configure SSH key for new user
 read -r -p "Paste your SSH public key for user 'user': " ssh_key
-mkdir -p $HOME/.ssh  # Use $HOME instead of /home/user
-echo "$ssh_key" | tee $HOME/.ssh/authorized_keys >/dev/null
-chmod 700 $HOME/.ssh
-chmod 600 $HOME/.ssh/authorized_keys
+
+# Switch to the new user context
+sudo su - user -c "mkdir -p $HOME/.ssh"
+sudo su - user -c "echo \"$ssh_key\" | tee $HOME/.ssh/authorized_keys >/dev/null"
+sudo su - user -c "chmod 700 $HOME/.ssh"
+sudo su - user -c "chmod 600 $HOME/.ssh/authorized_keys"
 
 # 4. Harden SSH configuration (Still needs sudo)
 echo "Configuring SSH security..."
